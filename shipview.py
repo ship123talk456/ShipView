@@ -37,7 +37,7 @@ def get_ship_data(api_key, imo_numbers):
 
 # 显示船舶信息和地图
 def display_ship_info_and_map(df, ship_data):
-    col1, col2 = st.columns([1, 3])  # 左侧表格，右侧地图
+    col1, col2 = st.columns([1, 2])  # 左侧表格，右侧地图
 
     with col1:
         st.write("## 船舶列表")
