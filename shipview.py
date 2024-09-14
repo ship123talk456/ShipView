@@ -14,7 +14,7 @@ def load_ship_data(filename):
 # 创建WebSocket订阅消息
 def create_subscription_message(api_key, imo_numbers):
     return json.dumps({
-        "APIKey": 9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e,
+        "APIKey": "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e",
         "BoundingBoxes": [[[-90, -180], [90, 180]]],  # 全球范围
         "FiltersShipMMSI": imo_numbers,  # 指定的 IMO number 列表
         "FilterMessageTypes": ["PositionReport"]  # 只订阅位置报告消息
