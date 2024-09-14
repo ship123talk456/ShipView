@@ -91,7 +91,7 @@ def main():
     imo_numbers = df['IMO number'].tolist()
 
     # 使用布局，将按钮移动到右侧地图的下方
-    col1, col2 = st.columns([1, 8])
+    col1, col2 = st.columns([1, 12])
 
     with col2:
         if st.button("获取船舶实时位置"):
