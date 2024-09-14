@@ -20,7 +20,7 @@ def main():
     df = load_ship_data(filename)
     
     # 创建两个列，左侧列表占五分之一，右侧地图占五分之四
-    col1, col2 = st.columns([1, 4])
+    col1, col2 = st.columns([1, 3])
     
     with col1:
         st.write("## 船舶列表")
