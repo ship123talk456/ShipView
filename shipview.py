@@ -17,7 +17,7 @@ def load_ship_data(filename):
 # 创建WebSocket订阅消息
 def create_subscription_message(api_key, imo_numbers):
     return json.dumps({
-        "APIKey": "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e",
+        "APIKey": api_key,
         "BoundingBoxes": [[[-90, -180], [90, 180]]],  # 全球范围
         "FiltersShipMMSI": imo_numbers,  # 指定的 IMO number 列表
         "FilterMessageTypes": ["PositionReport"]  # 只订阅位置报告消息
@@ -77,7 +77,7 @@ def main():
     imo_numbers = df['IMO number'].tolist()
 
     # 使用异步任务获取船舶实时数据
-    api_key = "your_api_key"
+    api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"
     if st.button("获取船舶实时位置"):
         ship_data = get_ship_data(api_key, imo_numbers)
         display_ship_info_and_map(df, ship_data)
