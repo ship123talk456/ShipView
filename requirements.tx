@@ -1,5 +1,5 @@
 streamlit
 pandas
 asyncio
-websockets
+websockets==8.1
 json
