@@ -3,9 +3,9 @@ import pandas as pd
 import asyncio
 import websockets
 import json
-import time
-from streamlit_folium import st_folium
 import folium
+from streamlit_folium import st_folium
+from folium.plugins import MarkerCluster
 
 # 设置页面配置
 st.set_page_config(page_title="船舶信息显示与实时位置", layout="wide")
@@ -37,7 +37,7 @@ def get_ship_data(api_key, imo_numbers):
 
 # 显示船舶信息和地图
 def display_ship_info_and_map(df, ship_data):
-    col1, col2 = st.columns([1, 1])  # 左侧表格，右侧地图
+    col1, col2 = st.columns([1, 4])  # 左侧表格，右侧地图
 
     with col1:
         st.write("## 船舶列表")
@@ -48,17 +48,31 @@ def display_ship_info_and_map(df, ship_data):
 
     with col2:
         st.write("## 船舶实时位置图")
-        # 创建一个初始的地图
-        map_center = [0, 0]  # 设置地图中心
+        
+        # 创建地图并设置初始位置
+        map_center = [0, 0]
         m = folium.Map(location=map_center, zoom_start=2)
         
+        # 使用 MarkerCluster 以便更好地显示多个点
+        marker_cluster = MarkerCluster().add_to(m)
+        
         if ship_data:
-            lat = ship_data.get('MetaData', {}).get('Latitude', 0)
-            lon = ship_data.get('MetaData', {}).get('Longitude', 0)
-            ship_name = ship_data.get('Message', {}).get('ShipName', 'Unknown Ship')
-            
-            # 添加船舶位置到地图上
-            folium.Marker([lat, lon], tooltip=ship_name).add_to(m)
+            for ship in ship_data.get('Message', {}).get('Ships', []):
+                lat = ship.get('Latitude', 0)
+                lon = ship.get('Longitude', 0)
+                ship_name = ship.get('ShipName', 'Unknown Ship')
+                ais_time = ship.get('Timestamp', 'Unknown Time')
+                
+                # 在地图上添加一个小红点，并在鼠标点击时显示弹窗
+                popup_info = f"船名: {ship_name}<br>AIS时间: {ais_time}"
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=5,
+                    color='red',
+                    fill=True,
+                    fill_color='red',
+                    popup=popup_info
+                ).add_to(marker_cluster)
         
         # 显示地图
         st_folium(m, width=700, height=500)
@@ -76,13 +90,17 @@ def main():
     # 获取IMO号码列表
     imo_numbers = df['IMO number'].tolist()
 
-    # 使用异步任务获取船舶实时数据
-    api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"
-    if st.button("获取船舶实时位置"):
-        ship_data = get_ship_data(api_key, imo_numbers)
-        display_ship_info_and_map(df, ship_data)
-    else:
-        display_ship_info_and_map(df, None)
+    # 使用布局，将按钮移动到右侧地图的下方
+    col1, col2 = st.columns([1, 4])
+
+    with col2:
+        if st.button("获取船舶实时位置"):
+            # 使用异步任务获取船舶实时数据
+            api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"
+            ship_data = get_ship_data(api_key, imo_numbers)
+            display_ship_info_and_map(df, ship_data)
+        else:
+            display_ship_info_and_map(df, None)
 
 if __name__ == "__main__":
     main()
