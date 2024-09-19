@@ -19,7 +19,7 @@ def create_subscription_message(api_key, imo_numbers):
     return json.dumps({
         "APIKey": api_key,
         "BoundingBoxes": [[[-90, -180], [90, 180]]],  # 全球范围
-        "FiltersShipMMSI": imo_numbers,  # 指定的 IMO number 列表
+        "FiltersShipMMSI": mmsi,  # 指定的 IMO number 列表
         "FilterMessageTypes": ["PositionReport"]  # 只订阅位置报告消息
     })
 
@@ -88,7 +88,7 @@ def main():
     df = load_ship_data(filename)
     
     # 获取IMO号码列表
-    imo_numbers = df['IMO number'].tolist()
+    mmsi = df['MMSI'].tolist()
 
     # 使用布局，将按钮移动到右侧地图的下方
     col1, col2 = st.columns([1, 12])
@@ -97,7 +97,7 @@ def main():
         if st.button("获取船舶实时位置"):
             # 使用异步任务获取船舶实时数据
             api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"
-            ship_data = get_ship_data(api_key, imo_numbers)
+            ship_data = get_ship_data(api_key, mmsi)
             display_ship_info_and_map(df, ship_data)
         else:
             display_ship_info_and_map(df, None)
