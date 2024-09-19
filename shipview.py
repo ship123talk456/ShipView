@@ -6,6 +6,9 @@ import json
 import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
+import nest_asyncio
+
+nest_asyncio.apply()
 
 # 设置页面配置
 st.set_page_config(page_title="船舶信息显示与实时位置", layout="wide")
