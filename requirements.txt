@@ -44,3 +44,4 @@ urllib3==2.2.3
 watchdog==4.0.2
 websockets==13.0.1
 xyzservices==2024.9.0
+nest_asyncio==1.5.1
