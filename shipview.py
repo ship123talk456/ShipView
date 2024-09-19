@@ -6,9 +6,9 @@ import json
 import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
-import nest_asyncio
+import nest_asyncio  # 导入nest_asyncio库
 
-nest_asyncio.apply()
+nest_asyncio.apply()  # 应用nest_asyncio
 
 # 设置页面配置
 st.set_page_config(page_title="船舶信息显示与实时位置", layout="wide")
@@ -104,7 +104,7 @@ def main():
         if st.button("获取船舶实时位置"):
             # 使用异步任务获取船舶实时数据
             api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"  # 请替换为你的API密钥
-            ship_data = asyncio.get_event_loop().run_until_complete(get_ship_data(api_key, mmsi_list))
+            ship_data = asyncio.run(get_ship_data(api_key, mmsi_list))
             display_ship_info_and_map(df, ship_data)
         else:
             display_ship_info_and_map(df, None)
