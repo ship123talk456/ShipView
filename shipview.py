@@ -1,113 +1,78 @@
 import streamlit as st
+import folium
+import streamlit_folium as slf
 import pandas as pd
 import asyncio
 import websockets
 import json
-import folium
-from streamlit_folium import st_folium
-from folium.plugins import MarkerCluster
-import nest_asyncio  # 导入nest_asyncio库
+from datetime import datetime, timezone
 
-nest_asyncio.apply()  # 应用nest_asyncio
+# 读取船舶信息
+def load_ship_data():
+    return pd.read_csv('shiplist.csv')
 
-# 设置页面配置
-st.set_page_config(page_title="船舶信息显示与实时位置", layout="wide")
+# 连接AIS Stream并获取船舶位置
+async def connect_ais_stream(ship_data):
+    ships = ship_data['MMSI'].tolist()
+    group_size = 50
+    groups = [ships[i:i + group_size] for i in range(0, len(ships), group_size)]
 
-# 读取CSV文件
-def load_ship_data(filename):
-    return pd.read_csv(filename)
+    async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
+        for group in groups:
+            subscribe_message = {
+                "APIKey": "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e",  # 替换为你的API Key
+                "BoundingBoxes": [[[-90, -180], [90, 180]]],
+                "FiltersShipMMSI": group,
+                "FilterMessageTypes": ["PositionReport"]
+            }
+            subscribe_message_json = json.dumps(subscribe_message)
+            await websocket.send(subscribe_message_json)
 
-# 创建WebSocket订阅消息
-def create_subscription_message(api_key, mmsi_list):
-    return json.dumps({
-        "APIKey": api_key,
-        "BoundingBoxes": [[[-90, -180], [90, 180]]],  # 全球范围
-        "FiltersShipMMSI": mmsi_list,  # 指定的 MMSI 列表
-        "FilterMessageTypes": ["PositionReport"]  # 只订阅位置报告消息
-    })
+            async for message_json in websocket:
+                message = json.loads(message_json)
+                message_type = message["MessageType"]
 
-# 连接到AISStream并订阅数据
-async def subscribe_to_aistream(api_key, mmsi_list):
-    try:
-        async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
-            subscription_message = create_subscription_message(api_key, mmsi_list)
-            await websocket.send(subscription_message)
-            while True:
-                message = await websocket.recv()
-                yield json.loads(message)
-    except websockets.exceptions.ConnectionClosed:
-        print("Connection closed")
+                if message_type == "PositionReport":
+                    ais_message = message['Message']['PositionReport']
+                    ship_id = ais_message['UserID']
+                    ship_info = ship_data[ship_data['MMSI'] == ship_id]
+                    if not ship_info.empty:
+                        ship_name = ship_info['Name of ship'].values[0]
+                        flag = ship_info['Flag'].values[0]
+                        imo_number = ship_info['IMO number'].values[0]
+                        gross_tonnage = ship_info['Gross tonnage'].values[0]
+                        year_of_build = ship_info['Year of build'].values[0]
+                        # 更新地图上的船舶位置
+                        st.session_state[ship_name] = {
+                            'latitude': ais_message['Latitude'],
+                            'longitude': ais_message['Longitude'],
+                            'info': f"Name: {ship_name}, Flag: {flag}, IMO: {imo_number}, Gross tonnage: {gross_tonnage}, Year of build: {year_of_build}"
+                        }
 
-# 异步调用WebSocket
-async def get_ship_data(api_key, mmsi_list):
-    async for ship_data in subscribe_to_aistream(api_key, mmsi_list):
-        return ship_data
+# 创建全屏地图
+def create_map():
+    m = folium.Map(location=[0, 0], zoom_start=2, tiles='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr='OpenStreetMap')
+    return m
 
-# 显示船舶信息和地图
-def display_ship_info_and_map(df, ship_data):
-    col1, col2 = st.columns([1, 3])  # 左侧表格，右侧地图
-
-    with col1:
-        st.write("## 船舶列表")
-        search_term = st.text_input("输入船名搜索")
-        if search_term:
-            df = df[df["Name of ship"].str.contains(search_term, case=False)]
-        st.dataframe(df)
-
-    with col2:
-        st.write("## 船舶实时位置图")
-        
-        # 创建地图并设置初始位置
-        m = folium.Map(location=[0, 0], zoom_start=2)
-        
-        # 使用 MarkerCluster 以便更好地显示多个点
-        marker_cluster = MarkerCluster().add_to(m)
-        
-        if ship_data:
-            for ship in ship_data.get('Message', {}).get('Ships', []):
-                lat = ship.get('Latitude', 0)
-                lon = ship.get('Longitude', 0)
-                ship_name = ship.get('ShipName', 'Unknown Ship')
-                ais_time = ship.get('Timestamp', 'Unknown Time')
-                
-                # 在地图上添加一个小红点，并在鼠标点击时显示弹窗
-                popup_info = f"船名: {ship_name}<br>AIS时间: {ais_time}"
-                folium.CircleMarker(
-                    location=[lat, lon],
-                    radius=5,
-                    color='red',
-                    fill=True,
-                    fill_color='red',
-                    popup=popup_info
-                ).add_to(marker_cluster)
-        
-        # 显示地图
-        st_folium(m)
-
-# 主函数
+# Streamlit应用
 def main():
-    st.title('船舶信息显示与实时位置')
+    st.title('Real-time Ship Tracking')
+    ship_data = load_ship_data()
+    m = create_map()
 
-    # 指定CSV文件路径
-    filename = 'shiplist.csv'
-    
-    # 读取CSV文件
-    df = load_ship_data(filename)
-    
-    # 获取MMSI号码列表
-    mmsi_list = df['MMSI'].tolist()
+    with st.spinner('Connecting to AIS Stream...'):
+        asyncio.run(connect_ais_stream(ship_data))
 
-    # 使用布局，将按钮移动到右侧地图的下方
-    col1, col2 = st.columns([1, 12])
+    for ship_name, data in st.session_state.items():
+        if isinstance(data, dict):
+            folium.Marker(
+                location=[data['latitude'], data['longitude']],
+                popup=f"{ship_name}: {data['info']}"
+            ).add_to(m)
 
-    with col2:
-        if st.button("获取船舶实时位置"):
-            # 使用异步任务获取船舶实时数据
-            api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"  # 请替换为你的API密钥
-            ship_data = asyncio.run(get_ship_data(api_key, mmsi_list))
-            display_ship_info_and_map(df, ship_data)
-        else:
-            display_ship_info_and_map(df, None)
+    slf.folium(m)
 
 if __name__ == "__main__":
+    st.session_state['ship_data'] = None
+    st.session_state['map'] = None
     main()
