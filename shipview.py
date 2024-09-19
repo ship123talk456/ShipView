@@ -24,7 +24,7 @@ async def connect_ais_stream(ship_data):
                     subscribe_message = {
                         "APIKey": "46851a4bd81c31e2fbbb19d3795ce073819b08bb",  # 替换为你的API Key
                         "BoundingBoxes": [[[-90, -180], [90, 180]]],
-                        "FiltersShipMMSI": group,
+                        "FiltersShipMMSI":  ["368207620", "367719770", "211476060"],
                         "FilterMessageTypes": ["PositionReport"]}
                     
                     subscribe_message_json = json.dumps(subscribe_message)
