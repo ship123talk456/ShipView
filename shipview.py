@@ -22,7 +22,7 @@ async def connect_ais_stream(ship_data):
             async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
                 for group in groups:
                     subscribe_message = {
-                        "APIKey": "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e",  # 替换为你的API Key
+                        "APIKey": "46851a4bd81c31e2fbbb19d3795ce073819b08bb",  # 替换为你的API Key
                         "BoundingBoxes": [[[-90, -180], [90, 180]]],
                         "FiltersShipMMSI": group,
                         "FilterMessageTypes": ["PositionReport"]
