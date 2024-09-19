@@ -15,25 +15,30 @@ def load_ship_data(filename):
     return pd.read_csv(filename)
 
 # 创建WebSocket订阅消息
-def create_subscription_message(api_key, imo_numbers):
+def create_subscription_message(api_key, mmsi_list):
     return json.dumps({
         "APIKey": api_key,
         "BoundingBoxes": [[[-90, -180], [90, 180]]],  # 全球范围
-        "FiltersShipMMSI": mmsi,  # 指定的 IMO number 列表
+        "FiltersShipMMSI": mmsi_list,  # 指定的 MMSI 列表
         "FilterMessageTypes": ["PositionReport"]  # 只订阅位置报告消息
     })
 
 # 连接到AISStream并订阅数据
-async def subscribe_to_aistream(api_key, imo_numbers):
-    async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
-        subscription_message = create_subscription_message(api_key, imo_numbers)
-        await websocket.send(subscription_message)
-        async for message in websocket:
-            return json.loads(message)
+async def subscribe_to_aistream(api_key, mmsi_list):
+    try:
+        async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
+            subscription_message = create_subscription_message(api_key, mmsi_list)
+            await websocket.send(subscription_message)
+            while True:
+                message = await websocket.recv()
+                yield json.loads(message)
+    except websockets.exceptions.ConnectionClosed:
+        print("Connection closed")
 
 # 异步调用WebSocket
-def get_ship_data(api_key, imo_numbers):
-    return asyncio.run(subscribe_to_aistream(api_key, imo_numbers))
+async def get_ship_data(api_key, mmsi_list):
+    async for ship_data in subscribe_to_aistream(api_key, mmsi_list):
+        return ship_data
 
 # 显示船舶信息和地图
 def display_ship_info_and_map(df, ship_data):
@@ -50,8 +55,7 @@ def display_ship_info_and_map(df, ship_data):
         st.write("## 船舶实时位置图")
         
         # 创建地图并设置初始位置
-        map_center = [0, 0]
-        m = folium.Map(location=map_center, zoom_start=2)
+        m = folium.Map(location=[0, 0], zoom_start=2)
         
         # 使用 MarkerCluster 以便更好地显示多个点
         marker_cluster = MarkerCluster().add_to(m)
@@ -75,7 +79,7 @@ def display_ship_info_and_map(df, ship_data):
                 ).add_to(marker_cluster)
         
         # 显示地图
-        st_folium(m, width=700, height=500)
+        st_folium(m)
 
 # 主函数
 def main():
@@ -87,8 +91,8 @@ def main():
     # 读取CSV文件
     df = load_ship_data(filename)
     
-    # 获取IMO号码列表
-    mmsi = df['MMSI'].tolist()
+    # 获取MMSI号码列表
+    mmsi_list = df['MMSI'].tolist()
 
     # 使用布局，将按钮移动到右侧地图的下方
     col1, col2 = st.columns([1, 12])
@@ -96,8 +100,8 @@ def main():
     with col2:
         if st.button("获取船舶实时位置"):
             # 使用异步任务获取船舶实时数据
-            api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"
-            ship_data = get_ship_data(api_key, mmsi)
+            api_key = "9e6aa141ba5aaf48fd35461cabc4902ab00d4e6e"  # 请替换为你的API密钥
+            ship_data = asyncio.get_event_loop().run_until_complete(get_ship_data(api_key, mmsi_list))
             display_ship_info_and_map(df, ship_data)
         else:
             display_ship_info_and_map(df, None)
