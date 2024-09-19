@@ -25,8 +25,8 @@ async def connect_ais_stream(ship_data):
                         "APIKey": "46851a4bd81c31e2fbbb19d3795ce073819b08bb",  # 替换为你的API Key
                         "BoundingBoxes": [[[-90, -180], [90, 180]]],
                         "FiltersShipMMSI": group,
-                        "FilterMessageTypes": ["PositionReport"]
-                    }
+                        "FilterMessageTypes": ["PositionReport"]}
+                    
                     subscribe_message_json = json.dumps(subscribe_message)
                     await websocket.send(subscribe_message_json)
 
